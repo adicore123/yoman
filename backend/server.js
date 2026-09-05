@@ -58,6 +58,60 @@ mongoose.connect(process.env.MONGODB_URI)
 // 1. Authentication Routes
 // ==========================================
 
+// Public user registration (always defaults to role: 'user', only adicore remains superadmin)
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, password, displayName } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'שם משתמש וסיסמה הם שדות חובה' });
+    }
+
+    const cleanUsername = username.trim().toLowerCase();
+    if (cleanUsername.length < 3) {
+      return res.status(400).json({ error: 'שם משתמש חייב להכיל לפחות 3 תווים באנגלית' });
+    }
+
+    if (password.length < 4) {
+      return res.status(400).json({ error: 'סיסמה חייבת להכיל לפחות 4 תווים' });
+    }
+
+    const existing = await User.findOne({ username: cleanUsername });
+    if (existing) {
+      return res.status(400).json({ error: 'שם משתמש זה כבר קיים במערכת, אנא בחר שם אחר' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    // Role is strictly locked to 'user' for public registration
+    const newUser = new User({
+      username: cleanUsername,
+      password: hashedPassword,
+      displayName: displayName?.trim() || cleanUsername,
+      role: 'user',
+      status: 'active'
+    });
+
+    await newUser.save();
+
+    const token = jwt.sign(
+      { id: newUser._id, username: newUser.username, role: newUser.role },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.status(201).json({
+      token,
+      user: {
+        id: newUser._id,
+        username: newUser.username,
+        displayName: newUser.displayName,
+        role: newUser.role
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'שגיאה בהרשמה למערכת', details: error.message });
+  }
+});
+
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;

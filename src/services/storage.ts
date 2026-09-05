@@ -118,6 +118,20 @@ export const authService = {
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
     return data;
   },
+  register: async (username: string, password: string, displayName?: string): Promise<{ user: UserProfile; token: string }> => {
+    const response = await fetch(`${BASE_API_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, displayName })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'שגיאה בהרשמה למערכת');
+    }
+    localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    return data;
+  },
   logout: () => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);

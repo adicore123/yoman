@@ -10,6 +10,7 @@ interface AppContextType {
   user: UserProfile | null;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<boolean>;
+  register: (username: string, password: string, displayName?: string) => Promise<boolean>;
   logout: () => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
@@ -76,6 +77,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const register = async (username: string, password: string, displayName?: string): Promise<boolean> => {
+    try {
+      const data = await authService.register(username, password, displayName);
+      setUser(data.user);
+      setIsAuthenticated(true);
+      return true;
+    } catch (err) {
+      console.error('Registration failed', err);
+      throw err;
+    }
+  };
+
   const logout = () => {
     authService.logout();
     setUser(null);
@@ -100,6 +113,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         login,
+        register,
         logout,
         theme,
         setTheme: setThemeState,
