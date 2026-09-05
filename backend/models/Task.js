@@ -39,6 +39,11 @@ const taskSchema = new mongoose.Schema({
   timestamp: { 
     type: String, 
     default: () => new Date().toISOString() 
+  },
+  userId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User', 
+    index: true 
   }
 }, {
   timestamps: true

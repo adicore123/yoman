@@ -7,6 +7,7 @@ import { AddEntryModal } from './AddEntryModal';
 import { TasksView } from './TasksView';
 import { MediaView } from './MediaView';
 import { AddMediaModal } from './AddMediaModal';
+import { SuperadminView } from './SuperadminView';
 import { useApp } from '../context/AppContext';
 
 export function Layout() {
@@ -18,7 +19,7 @@ export function Layout() {
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const [sharedMediaData, setSharedMediaData] = useState<{ url: string; title: string } | null>(null);
 
-  const { activePage, setActivePage } = useApp();
+  const { activePage, setActivePage, user } = useApp();
 
   const handleEntryAdded = () => {
     setIsModalOpen(false);
@@ -81,6 +82,7 @@ export function Layout() {
           {activePage === 'tasks' && <TasksView />}
           {activePage === 'media' && <MediaView />}
           {activePage === 'settings' && <Settings />}
+          {activePage === 'superadmin' && user?.role === 'superadmin' && <SuperadminView />}
           {activePage === 'insights' && (
             <div className="flex flex-col items-center justify-center h-full text-foreground/50 py-12">
               <h3 className="text-xl font-medium mb-2">תובנות ומעקב</h3>

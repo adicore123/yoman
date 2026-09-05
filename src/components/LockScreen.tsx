@@ -15,10 +15,10 @@ export function LockScreen() {
       setPin(newPin);
       
       if (newPin.length === 4) {
-        if (!login(newPin)) {
+        login('adicore', newPin).catch(() => {
           setError(true);
           setTimeout(() => setPin(''), 500);
-        }
+        });
       }
     }
   };

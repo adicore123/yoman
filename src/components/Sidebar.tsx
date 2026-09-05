@@ -1,5 +1,5 @@
-import { useApp } from '../context/AppContext';
-import { Book, CheckSquare, PlayCircle, LineChart, Settings, Lock, Moon, Sun, Leaf, X } from 'lucide-react';
+import { useApp, type Page } from '../context/AppContext';
+import { Book, CheckSquare, PlayCircle, LineChart, Settings, ShieldCheck, LogOut, Moon, Sun, Leaf, X } from 'lucide-react';
 import clsx from 'clsx';
 
 interface SidebarProps {
@@ -8,9 +8,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
-  const { logout, theme, setTheme, activePage, setActivePage } = useApp();
+  const { user, logout, theme, setTheme, activePage, setActivePage } = useApp();
 
-  const handleNavClick = (page: 'journal' | 'tasks' | 'media' | 'insights' | 'settings') => {
+  const handleNavClick = (page: Page) => {
     setActivePage(page);
     if (onClose) onClose();
   };
@@ -129,11 +129,46 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             <Settings size={19} />
             <span>הגדרות</span>
           </button>
+
+          {/* Superadmin Menu Entry */}
+          {user?.role === 'superadmin' && (
+            <div className="pt-2 border-t border-border/40 mt-2">
+              <button 
+                onClick={() => handleNavClick('superadmin')}
+                className={clsx(
+                  "w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all font-medium text-sm",
+                  activePage === 'superadmin' 
+                    ? "bg-purple-500/20 text-purple-600 dark:text-purple-400 font-bold shadow-sm border border-purple-500/30" 
+                    : "hover:bg-purple-500/10 text-purple-600/90 dark:text-purple-400/90 font-semibold"
+                )}
+              >
+                <ShieldCheck size={19} />
+                <span>ניהול מערכת (Superadmin)</span>
+              </button>
+            </div>
+          )}
         </nav>
 
-        {/* Bottom Theme & Lock Footer */}
-        <div className="mt-auto pt-3 border-t border-border/50 space-y-3">
+        {/* Bottom Theme, User & Logout Footer */}
+        <div className="mt-auto pt-3 border-t border-border/50 space-y-2.5">
           
+          {/* User Profile Pill */}
+          {user && (
+            <div className="flex items-center gap-2.5 px-3 py-2 bg-background rounded-2xl border border-border">
+              <div className="w-8 h-8 rounded-xl bg-accent/20 text-accent font-black flex items-center justify-center text-xs">
+                {user.displayName ? user.displayName[0].toUpperCase() : user.username[0].toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold text-foreground truncate">
+                  {user.displayName}
+                </div>
+                <div className="text-[10px] text-foreground/50 font-mono truncate">
+                  @{user.username} {user.role === 'superadmin' && '• Superadmin'}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Theme Switcher */}
           <div className="bg-background rounded-2xl p-1 flex items-center justify-between border border-border">
             <button 
@@ -162,13 +197,13 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
             </button>
           </div>
 
-          {/* Quick Lock Button */}
+          {/* Logout Button */}
           <button 
             onClick={logout}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500/20 font-medium text-xs transition-colors"
           >
-            <Lock size={15} />
-            <span>נעל אזור אישי</span>
+            <LogOut size={15} />
+            <span>התנתק מהחשבון</span>
           </button>
         </div>
 

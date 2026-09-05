@@ -13,13 +13,221 @@ export interface JournalEntry {
   updatedAt: string;
 }
 
+export type TaskCategory = 'therapy' | 'medical' | 'personal';
+export type TaskPriority = 'low' | 'medium' | 'high';
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  category: TaskCategory;
+  therapistOrDoctor?: string;
+  dueDate?: string;
+  dueTime?: string;
+  displayDate?: string;
+  displayTime?: string;
+  timestamp?: string;
+  completed: boolean;
+  completedAt?: string | null;
+  priority: TaskPriority;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MediaPlatform = 'youtube' | 'facebook' | 'instagram' | 'tiktok' | 'other';
+export type MediaCategory = 'inspiration' | 'calm' | 'motivation' | 'healing' | 'general';
+
+export interface MediaItem {
+  id: string;
+  title: string;
+  url: string;
+  platform: MediaPlatform;
+  category: MediaCategory;
+  notes?: string;
+  isFavorite: boolean;
+  displayDate?: string;
+  displayTime?: string;
+  timestamp?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  role: 'user' | 'admin' | 'superadmin';
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  activeUsers: number;
+  totalEntries: number;
+  totalTasks: number;
+  totalMedia: number;
+}
+
+export interface AdminUser {
+  id: string;
+  username: string;
+  displayName: string;
+  role: 'user' | 'admin' | 'superadmin';
+  status: 'active' | 'disabled';
+  createdAt: string;
+  stats: {
+    entries: number;
+    tasks: number;
+    media: number;
+  };
+}
+
 const BASE_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const API_URL = `${BASE_API_URL}/api/entries`;
-const ENTRIES_CACHE_KEY = 'yoman_entries_cache';
+const TOKEN_KEY = 'wisecare_token';
+const USER_KEY = 'wisecare_user';
+
+// ==========================================
+// Authentication Service
+// ==========================================
+export const authService = {
+  getToken: (): string | null => {
+    return localStorage.getItem(TOKEN_KEY);
+  },
+  getUser: (): UserProfile | null => {
+    try {
+      const raw = localStorage.getItem(USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  },
+  getAuthHeaders: (): Record<string, string> => {
+    const token = authService.getToken();
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  },
+  login: async (username: string, password: string): Promise<{ user: UserProfile; token: string }> => {
+    const response = await fetch(`${BASE_API_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'שגיאה בהתחברות למערכת');
+    }
+    localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+    return data;
+  },
+  logout: () => {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  },
+  getCurrentUser: async (): Promise<UserProfile | null> => {
+    const token = authService.getToken();
+    if (!token) return null;
+    try {
+      const response = await fetch(`${BASE_API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        return data.user;
+      }
+      authService.logout();
+      return null;
+    } catch {
+      return authService.getUser();
+    }
+  }
+};
+
+// ==========================================
+// Superadmin Management Service
+// ==========================================
+export const adminService = {
+  getStats: async (): Promise<AdminStats> => {
+    const response = await fetch(`${BASE_API_URL}/api/admin/stats`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...authService.getAuthHeaders()
+      }
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to fetch admin stats');
+    }
+    return response.json();
+  },
+
+  getUsers: async (): Promise<AdminUser[]> => {
+    const response = await fetch(`${BASE_API_URL}/api/admin/users`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...authService.getAuthHeaders()
+      }
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to fetch users');
+    }
+    return response.json();
+  },
+
+  createUser: async (user: { username: string; password: string; displayName?: string; role?: string }): Promise<AdminUser> => {
+    const response = await fetch(`${BASE_API_URL}/api/admin/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authService.getAuthHeaders()
+      },
+      body: JSON.stringify(user)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to create user');
+    return data;
+  },
+
+  updateUser: async (id: string, updates: Partial<{ displayName: string; role: string; status: string; password?: string }>): Promise<AdminUser> => {
+    const response = await fetch(`${BASE_API_URL}/api/admin/users/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...authService.getAuthHeaders()
+      },
+      body: JSON.stringify(updates)
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Failed to update user');
+    return data;
+  },
+
+  deleteUser: async (id: string): Promise<boolean> => {
+    const response = await fetch(`${BASE_API_URL}/api/admin/users/${id}`, {
+      method: 'DELETE',
+      headers: {
+        ...authService.getAuthHeaders()
+      }
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to delete user');
+    }
+    return true;
+  }
+};
+
+// ==========================================
+// Isolated Local Storage Cache Helpers
+// ==========================================
+const getCacheKey = (base: string) => {
+  const user = authService.getUser();
+  return user ? `${base}_${user.id}` : base;
+};
 
 const getCachedEntries = (): JournalEntry[] => {
   try {
-    const raw = localStorage.getItem(ENTRIES_CACHE_KEY);
+    const raw = localStorage.getItem(getCacheKey('yoman_entries_cache'));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -28,16 +236,23 @@ const getCachedEntries = (): JournalEntry[] => {
 
 const setCachedEntries = (entries: JournalEntry[]) => {
   try {
-    localStorage.setItem(ENTRIES_CACHE_KEY, JSON.stringify(entries));
+    localStorage.setItem(getCacheKey('yoman_entries_cache'), JSON.stringify(entries));
   } catch (e) {
     console.error('Failed to save to local cache', e);
   }
 };
 
+// ==========================================
+// Journal Entries Storage
+// ==========================================
+const API_URL = `${BASE_API_URL}/api/entries`;
+
 export const storage = {
   getAll: async (): Promise<JournalEntry[]> => {
     try {
-      const response = await fetch(API_URL);
+      const response = await fetch(API_URL, {
+        headers: { ...authService.getAuthHeaders() }
+      });
       if (!response.ok) throw new Error('Failed to fetch entries');
       const data: JournalEntry[] = await response.json();
       setCachedEntries(data);
@@ -60,20 +275,21 @@ export const storage = {
       pinned: false
     };
 
-    // Save to local cache first so it appears immediately
     const existing = getCachedEntries();
     setCachedEntries([localEntry, ...existing]);
 
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authService.getAuthHeaders()
+        },
         body: JSON.stringify(entry)
       });
       
       if (response.ok) {
         const savedServerEntry: JournalEntry = await response.json();
-        // Replace temporary local entry with the real MongoDB Atlas entry
         const updated = getCachedEntries().map(e => e.id === localEntry.id ? savedServerEntry : e);
         setCachedEntries(updated);
         return savedServerEntry;
@@ -86,7 +302,6 @@ export const storage = {
   },
 
   update: async (id: string, content: string): Promise<JournalEntry | null> => {
-    // Update local cache first
     const existing = getCachedEntries();
     let updatedEntry: JournalEntry | null = null;
     const nextList = existing.map(e => {
@@ -101,7 +316,10 @@ export const storage = {
     try {
       const response = await fetch(`${API_URL}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authService.getAuthHeaders()
+        },
         body: JSON.stringify({ content })
       });
       
@@ -118,33 +336,14 @@ export const storage = {
   }
 };
 
-export type TaskCategory = 'therapy' | 'medical' | 'personal';
-export type TaskPriority = 'low' | 'medium' | 'high';
-
-export interface TaskItem {
-  id: string;
-  title: string;
-  category: TaskCategory;
-  therapistOrDoctor?: string;
-  dueDate?: string;
-  dueTime?: string;
-  displayDate?: string;
-  displayTime?: string;
-  timestamp?: string;
-  completed: boolean;
-  completedAt?: string | null;
-  priority: TaskPriority;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
+// ==========================================
+// Tasks Storage
+// ==========================================
 const TASKS_API_URL = `${BASE_API_URL}/api/tasks`;
-const TASKS_CACHE_KEY = 'yoman_tasks_cache';
 
 const getCachedTasks = (): TaskItem[] => {
   try {
-    const raw = localStorage.getItem(TASKS_CACHE_KEY);
+    const raw = localStorage.getItem(getCacheKey('yoman_tasks_cache'));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -153,7 +352,7 @@ const getCachedTasks = (): TaskItem[] => {
 
 const setCachedTasks = (tasks: TaskItem[]) => {
   try {
-    localStorage.setItem(TASKS_CACHE_KEY, JSON.stringify(tasks));
+    localStorage.setItem(getCacheKey('yoman_tasks_cache'), JSON.stringify(tasks));
   } catch (e) {
     console.error('Failed to save tasks to local cache', e);
   }
@@ -162,7 +361,9 @@ const setCachedTasks = (tasks: TaskItem[]) => {
 export const taskStorage = {
   getAll: async (): Promise<TaskItem[]> => {
     try {
-      const response = await fetch(TASKS_API_URL);
+      const response = await fetch(TASKS_API_URL, {
+        headers: { ...authService.getAuthHeaders() }
+      });
       if (!response.ok) throw new Error('Failed to fetch tasks');
       const data: TaskItem[] = await response.json();
       setCachedTasks(data);
@@ -188,7 +389,10 @@ export const taskStorage = {
     try {
       const response = await fetch(TASKS_API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authService.getAuthHeaders()
+        },
         body: JSON.stringify(task)
       });
       if (response.ok) {
@@ -219,7 +423,10 @@ export const taskStorage = {
     try {
       const response = await fetch(`${TASKS_API_URL}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authService.getAuthHeaders()
+        },
         body: JSON.stringify(updates)
       });
       if (response.ok) {
@@ -247,7 +454,8 @@ export const taskStorage = {
 
     try {
       const response = await fetch(`${TASKS_API_URL}/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { ...authService.getAuthHeaders() }
       });
       return response.ok;
     } catch (error) {
@@ -257,24 +465,9 @@ export const taskStorage = {
   }
 };
 
-export type MediaPlatform = 'youtube' | 'facebook' | 'instagram' | 'tiktok' | 'other';
-export type MediaCategory = 'inspiration' | 'calm' | 'motivation' | 'healing' | 'general';
-
-export interface MediaItem {
-  id: string;
-  title: string;
-  url: string;
-  platform: MediaPlatform;
-  category: MediaCategory;
-  notes?: string;
-  isFavorite: boolean;
-  displayDate?: string;
-  displayTime?: string;
-  timestamp?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
+// ==========================================
+// Media Storage
+// ==========================================
 export function detectMediaPlatform(url: string): MediaPlatform {
   if (!url) return 'other';
   const lower = url.toLowerCase();
@@ -286,11 +479,10 @@ export function detectMediaPlatform(url: string): MediaPlatform {
 }
 
 const MEDIA_API_URL = `${BASE_API_URL}/api/media`;
-const MEDIA_CACHE_KEY = 'yoman_media_cache';
 
 const getCachedMedia = (): MediaItem[] => {
   try {
-    const raw = localStorage.getItem(MEDIA_CACHE_KEY);
+    const raw = localStorage.getItem(getCacheKey('yoman_media_cache'));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -299,7 +491,7 @@ const getCachedMedia = (): MediaItem[] => {
 
 const setCachedMedia = (items: MediaItem[]) => {
   try {
-    localStorage.setItem(MEDIA_CACHE_KEY, JSON.stringify(items));
+    localStorage.setItem(getCacheKey('yoman_media_cache'), JSON.stringify(items));
   } catch (e) {
     console.error('Failed to save media to local cache', e);
   }
@@ -308,7 +500,9 @@ const setCachedMedia = (items: MediaItem[]) => {
 export const mediaStorage = {
   getAll: async (): Promise<MediaItem[]> => {
     try {
-      const response = await fetch(MEDIA_API_URL);
+      const response = await fetch(MEDIA_API_URL, {
+        headers: { ...authService.getAuthHeaders() }
+      });
       if (!response.ok) throw new Error('Failed to fetch media');
       const data: MediaItem[] = await response.json();
       setCachedMedia(data);
@@ -334,7 +528,10 @@ export const mediaStorage = {
     try {
       const response = await fetch(MEDIA_API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authService.getAuthHeaders()
+        },
         body: JSON.stringify(item)
       });
       if (response.ok) {
@@ -365,7 +562,10 @@ export const mediaStorage = {
     try {
       const response = await fetch(`${MEDIA_API_URL}/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...authService.getAuthHeaders()
+        },
         body: JSON.stringify(updates)
       });
       if (response.ok) {
@@ -390,7 +590,8 @@ export const mediaStorage = {
 
     try {
       const response = await fetch(`${MEDIA_API_URL}/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: { ...authService.getAuthHeaders() }
       });
       return response.ok;
     } catch (error) {
@@ -399,4 +600,3 @@ export const mediaStorage = {
     }
   }
 };
-

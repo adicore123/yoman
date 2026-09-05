@@ -9,7 +9,8 @@ const entrySchema = new mongoose.Schema({
   pinned: { type: Boolean, default: false },
   displayDate: { type: String, required: false },
   displayTime: { type: String, required: false },
-  timestamp: { type: String, required: true }
+  timestamp: { type: String, required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }
 }, {
   timestamps: true
 });
