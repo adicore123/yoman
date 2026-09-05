@@ -32,7 +32,10 @@ export function LoginScreen() {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password) {
+    const cleanUsername = username.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanUsername || !cleanPassword) {
       setErrorMessage('נא להזין שם משתמש וסיסמה');
       return;
     }
@@ -41,9 +44,13 @@ export function LoginScreen() {
     setErrorMessage('');
 
     try {
-      await login(username.trim(), password);
+      await login(cleanUsername, cleanPassword);
     } catch (err: any) {
-      setErrorMessage(err.message || 'שם משתמש או סיסמה שגויים');
+      if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('Load failed'))) {
+        setErrorMessage('שגיאת תקשורת עם השרת. ודא חיבור תקין לאינטרנט ונסה שוב.');
+      } else {
+        setErrorMessage(err.message || 'שם משתמש או סיסמה שגויים');
+      }
     } finally {
       setLoading(false);
     }
@@ -52,8 +59,10 @@ export function LoginScreen() {
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUsername = regUsername.trim().toLowerCase();
+    const cleanPassword = regPassword.trim();
+    const cleanConfirm = regConfirmPassword.trim();
     
-    if (!cleanUsername || !regPassword) {
+    if (!cleanUsername || !cleanPassword) {
       setErrorMessage('שם משתמש וסיסמה הם שדות חובה');
       return;
     }
@@ -63,12 +72,12 @@ export function LoginScreen() {
       return;
     }
 
-    if (regPassword.length < 4) {
+    if (cleanPassword.length < 4) {
       setErrorMessage('הסיסמה חייבת להכיל לפחות 4 תווים');
       return;
     }
 
-    if (regPassword !== regConfirmPassword) {
+    if (cleanPassword !== cleanConfirm) {
       setErrorMessage('הסיסמאות אינן תואמות');
       return;
     }
@@ -77,9 +86,13 @@ export function LoginScreen() {
     setErrorMessage('');
 
     try {
-      await register(cleanUsername, regPassword, regDisplayName.trim() || cleanUsername);
+      await register(cleanUsername, cleanPassword, regDisplayName.trim() || cleanUsername);
     } catch (err: any) {
-      setErrorMessage(err.message || 'שגיאה ביצירת החשבון');
+      if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('Load failed'))) {
+        setErrorMessage('שגיאת תקשורת עם השרת. ודא חיבור תקין לאינטרנט ונסה שוב.');
+      } else {
+        setErrorMessage(err.message || 'שגיאה ביצירת החשבון');
+      }
     } finally {
       setLoading(false);
     }
@@ -163,6 +176,10 @@ export function LoginScreen() {
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="הזן שם משתמש"
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  inputMode="text"
                   className="w-full ps-10 pe-4 py-3 rounded-xl bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
                   required
                 />
@@ -184,6 +201,9 @@ export function LoginScreen() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="הזן סיסמה"
                   autoComplete="current-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   className="w-full ps-10 pe-11 py-3 rounded-xl bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
                   required
                 />
@@ -220,7 +240,7 @@ export function LoginScreen() {
               )}
             </button>
 
-            {/* Quick Fill Demo Helper */}
+            {/* Quick Fill Helper */}
             <div className="w-full pt-4 border-t border-border/60 flex flex-col items-center gap-2 text-center">
               <span className="text-[11px] text-foreground/50">
                 משתמש מנהל ראשי (Superadmin):
@@ -251,6 +271,8 @@ export function LoginScreen() {
                   value={regDisplayName}
                   onChange={(e) => setRegDisplayName(e.target.value)}
                   placeholder="לדוגמה: דנה ישראלי"
+                  autoCapitalize="words"
+                  autoCorrect="off"
                   className="w-full ps-10 pe-4 py-2.5 rounded-xl bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
                 />
                 <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none text-foreground/40">
@@ -271,6 +293,10 @@ export function LoginScreen() {
                   onChange={(e) => setRegUsername(e.target.value)}
                   placeholder="לדוגמה: dana_cohen"
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  inputMode="text"
                   className="w-full ps-10 pe-4 py-2.5 rounded-xl bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
                   required
                 />
@@ -292,6 +318,9 @@ export function LoginScreen() {
                   onChange={(e) => setRegPassword(e.target.value)}
                   placeholder="בחר סיסמה"
                   autoComplete="new-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   className="w-full ps-10 pe-11 py-2.5 rounded-xl bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
                   required
                 />
@@ -321,6 +350,9 @@ export function LoginScreen() {
                   onChange={(e) => setRegConfirmPassword(e.target.value)}
                   placeholder="הקלד שוב את הסיסמה"
                   autoComplete="new-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                   className="w-full ps-10 pe-4 py-2.5 rounded-xl bg-background border border-border text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
                   required
                 />

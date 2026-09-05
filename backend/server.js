@@ -47,12 +47,30 @@ async function seedInitialUserAndMigrate() {
   }
 }
 
-mongoose.connect(process.env.MONGODB_URI)
-  .then(async () => {
+let isConnected = false;
+async function connectDB() {
+  if (isConnected && mongoose.connection.readyState === 1) return;
+  if (!process.env.MONGODB_URI) {
+    console.error('MONGODB_URI is not set in environment variables');
+    return;
+  }
+  try {
+    const db = await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000
+    });
+    isConnected = db.connections[0].readyState === 1;
     console.log('Connected to MongoDB Atlas');
     await seedInitialUserAndMigrate();
-  })
-  .catch(err => console.error('Error connecting to MongoDB:', err));
+  } catch (err) {
+    console.error('Error connecting to MongoDB:', err);
+  }
+}
+
+// Ensure database connection on each request (crucial for serverless on Vercel)
+app.use(async (req, res, next) => {
+  await connectDB();
+  next();
+});
 
 // ==========================================
 // 1. Authentication Routes
@@ -485,6 +503,12 @@ app.delete('/api/admin/users/:id', authMiddleware, superadminMiddleware, async (
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  });
+}
+
+module.exports = app;

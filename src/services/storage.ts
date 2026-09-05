@@ -81,7 +81,30 @@ export interface AdminUser {
   };
 }
 
-const BASE_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const getBaseApiUrl = (): string => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && envUrl.trim() !== '') {
+    // If running in production (e.g. Vercel) and envUrl is localhost, ignore it to prevent mobile errors!
+    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      if (envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+        return ''; // Use relative /api path on production
+      }
+    }
+    return envUrl.replace(/\/$/, '');
+  }
+
+  // If in browser on any non-localhost domain (Vercel, custom domain, etc.)
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+      return ''; // Relative path (/api)
+    }
+  }
+
+  // Local development default (Vite proxy forwards /api to 5000, or direct 5000)
+  return '';
+};
+
+const BASE_API_URL = getBaseApiUrl();
 const TOKEN_KEY = 'wisecare_token';
 const USER_KEY = 'wisecare_user';
 
@@ -105,26 +128,54 @@ export const authService = {
     return token ? { 'Authorization': `Bearer ${token}` } : {};
   },
   login: async (username: string, password: string): Promise<{ user: UserProfile; token: string }> => {
-    const response = await fetch(`${BASE_API_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
-    });
-    const data = await response.json();
+    let response: Response;
+    try {
+      response = await fetch(`${BASE_API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+    } catch (networkErr: any) {
+      console.error('Network fetch error during login:', networkErr);
+      throw new Error('שגיאת תקשורת עם השרת. ודא חיבור תקין לאינטרנט ונסה שוב.');
+    }
+
+    let data: any = {};
+    try {
+      data = await response.json();
+    } catch (parseErr) {
+      console.error('Non-JSON response received:', parseErr);
+      throw new Error('השרת החזיר תשובה שאינה תקינה. אנא נסה שוב בעוד מספר רגעים.');
+    }
+
     if (!response.ok) {
-      throw new Error(data.error || 'שגיאה בהתחברות למערכת');
+      throw new Error(data.error || 'שם משתמש או סיסמה שגויים');
     }
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
     return data;
   },
   register: async (username: string, password: string, displayName?: string): Promise<{ user: UserProfile; token: string }> => {
-    const response = await fetch(`${BASE_API_URL}/api/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, displayName })
-    });
-    const data = await response.json();
+    let response: Response;
+    try {
+      response = await fetch(`${BASE_API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, displayName })
+      });
+    } catch (networkErr: any) {
+      console.error('Network fetch error during register:', networkErr);
+      throw new Error('שגיאת תקשורת עם השרת. ודא חיבור תקין לאינטרנט ונסה שוב.');
+    }
+
+    let data: any = {};
+    try {
+      data = await response.json();
+    } catch (parseErr) {
+      console.error('Non-JSON response received:', parseErr);
+      throw new Error('השרת החזיר תשובה שאינה תקינה. אנא נסה שוב בעוד מספר רגעים.');
+    }
+
     if (!response.ok) {
       throw new Error(data.error || 'שגיאה בהרשמה למערכת');
     }
