@@ -264,11 +264,11 @@ export function TasksView() {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-2 rounded-2xl border border-border">
         
         {/* Category Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
           <button
             onClick={() => setActiveFilter('all')}
             className={clsx(
-              "px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap",
+              "px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0",
               activeFilter === 'all'
                 ? "bg-accent text-white shadow-sm"
                 : "text-foreground/70 hover:bg-border/50"
@@ -280,7 +280,7 @@ export function TasksView() {
           <button
             onClick={() => setActiveFilter('therapy')}
             className={clsx(
-              "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap",
+              "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0",
               activeFilter === 'therapy'
                 ? "bg-accent text-white shadow-sm"
                 : "text-foreground/70 hover:bg-border/50"
@@ -293,7 +293,7 @@ export function TasksView() {
           <button
             onClick={() => setActiveFilter('medical')}
             className={clsx(
-              "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap",
+              "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0",
               activeFilter === 'medical'
                 ? "bg-emerald-600 text-white shadow-sm"
                 : "text-foreground/70 hover:bg-border/50"
@@ -306,7 +306,7 @@ export function TasksView() {
           <button
             onClick={() => setActiveFilter('personal')}
             className={clsx(
-              "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap",
+              "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0",
               activeFilter === 'personal'
                 ? "bg-amber-600 text-white shadow-sm"
                 : "text-foreground/70 hover:bg-border/50"
@@ -319,7 +319,7 @@ export function TasksView() {
           <button
             onClick={() => setActiveFilter('completed')}
             className={clsx(
-              "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap",
+              "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0",
               activeFilter === 'completed'
                 ? "bg-foreground/80 text-background shadow-sm"
                 : "text-foreground/70 hover:bg-border/50"

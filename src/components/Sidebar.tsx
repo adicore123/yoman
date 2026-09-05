@@ -29,11 +29,11 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
       {/* Main Sidebar */}
       <aside 
         className={clsx(
-          "w-72 md:w-64 border-e border-border bg-card flex flex-col h-screen p-4 transition-all duration-300 z-50",
-          "fixed md:static inset-y-0 start-0",
+          "w-72 md:w-64 border-e border-border bg-card flex flex-col h-[100dvh] md:h-screen p-4 transition-transform duration-300 ease-in-out z-50",
+          "fixed md:static inset-y-0 right-0 md:right-auto",
           isOpen 
             ? "translate-x-0 shadow-2xl" 
-            : "-translate-x-full rtl:translate-x-full md:translate-x-0 md:rtl:translate-x-0"
+            : "translate-x-full md:translate-x-0"
         )}
       >
         

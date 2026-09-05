@@ -138,11 +138,11 @@ export function MediaView() {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-2 rounded-2xl border border-border">
         
         {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
           <button
             onClick={() => setActiveFilter('all')}
             className={clsx(
-              "px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap",
+              "px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0",
               activeFilter === 'all'
                 ? "bg-accent text-white shadow-sm"
                 : "text-foreground/70 hover:bg-border/50"
@@ -154,7 +154,7 @@ export function MediaView() {
           <button
             onClick={() => setActiveFilter('favorites')}
             className={clsx(
-              "flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap",
+              "flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0",
               activeFilter === 'favorites'
                 ? "bg-amber-500 text-white shadow-sm"
                 : "text-foreground/70 hover:bg-border/50"
@@ -167,7 +167,7 @@ export function MediaView() {
           <button
             onClick={() => setActiveFilter('inspiration')}
             className={clsx(
-              "flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap",
+              "flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0",
               activeFilter === 'inspiration'
                 ? "bg-accent text-white shadow-sm"
                 : "text-foreground/70 hover:bg-border/50"
@@ -180,7 +180,7 @@ export function MediaView() {
           <button
             onClick={() => setActiveFilter('calm')}
             className={clsx(
-              "flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap",
+              "flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0",
               activeFilter === 'calm'
                 ? "bg-emerald-600 text-white shadow-sm"
                 : "text-foreground/70 hover:bg-border/50"
@@ -193,7 +193,7 @@ export function MediaView() {
           <button
             onClick={() => setActiveFilter('motivation')}
             className={clsx(
-              "flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap",
+              "flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0",
               activeFilter === 'motivation'
                 ? "bg-amber-600 text-white shadow-sm"
                 : "text-foreground/70 hover:bg-border/50"
@@ -206,7 +206,7 @@ export function MediaView() {
           <button
             onClick={() => setActiveFilter('healing')}
             className={clsx(
-              "flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap",
+              "flex items-center gap-1 px-3.5 py-2 rounded-xl text-xs font-semibold transition-colors whitespace-nowrap shrink-0",
               activeFilter === 'healing'
                 ? "bg-rose-600 text-white shadow-sm"
                 : "text-foreground/70 hover:bg-border/50"

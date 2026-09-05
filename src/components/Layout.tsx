@@ -63,7 +63,7 @@ export function Layout() {
   }, [setActivePage]);
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden relative">
+    <div className="flex h-[100dvh] bg-background overflow-hidden relative">
       {/* Sidebar with Mobile slide-over support */}
       <Sidebar 
         isOpen={isMobileSidebarOpen} 
@@ -71,13 +71,13 @@ export function Layout() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative min-w-0">
+      <main className="flex-1 flex flex-col h-[100dvh] overflow-hidden relative min-w-0">
         <Header 
           onAddEntry={() => setIsModalOpen(true)} 
           onToggleSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
         />
         
-        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 md:p-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 md:p-8">
           {activePage === 'journal' && <EntriesTable key={refreshKey} />}
           {activePage === 'tasks' && <TasksView />}
           {activePage === 'media' && <MediaView />}
