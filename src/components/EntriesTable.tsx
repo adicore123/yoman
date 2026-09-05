@@ -21,7 +21,18 @@ export function EntriesTable() {
       }
     };
     fetchEntries();
-    return () => { mounted = false; };
+
+    const handleUpdate = () => {
+      storage.getAll().then(data => {
+        if (mounted) setEntries(data);
+      });
+    };
+
+    window.addEventListener('wisecare:entry-updated', handleUpdate);
+    return () => { 
+      mounted = false; 
+      window.removeEventListener('wisecare:entry-updated', handleUpdate);
+    };
   }, []);
 
   const handleEdit = (entry: JournalEntry) => {

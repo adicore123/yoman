@@ -359,16 +359,39 @@ export const storage = {
     }
   },
 
-  save: async (entry: { content: string; timestamp: string }): Promise<JournalEntry> => {
-    const now = new Date().toISOString();
+  save: async (entry: { 
+    content: string; 
+    timestamp?: string; 
+    displayDate?: string; 
+    displayTime?: string;
+    title?: string;
+    mood?: JournalEntry['mood'];
+    intensity?: number;
+    tags?: string[];
+    pinned?: boolean;
+  }): Promise<JournalEntry> => {
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const displayDate = entry.displayDate || now.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const displayTime = entry.displayTime || now.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+
+    const payload = {
+      content: entry.content,
+      timestamp: entry.timestamp || nowIso,
+      displayDate,
+      displayTime,
+      title: entry.title || '',
+      mood: entry.mood || 'calm',
+      intensity: entry.intensity || 3,
+      tags: entry.tags || [],
+      pinned: entry.pinned || false
+    };
+
     const localEntry: JournalEntry = {
       id: 'entry_' + Date.now(),
-      content: entry.content,
-      timestamp: entry.timestamp || now,
-      createdAt: now,
-      updatedAt: now,
-      tags: [],
-      pinned: false
+      ...payload,
+      createdAt: nowIso,
+      updatedAt: nowIso
     };
 
     const existing = getCachedEntries();
@@ -381,19 +404,25 @@ export const storage = {
           'Content-Type': 'application/json',
           ...authService.getAuthHeaders()
         },
-        body: JSON.stringify(entry)
+        body: JSON.stringify(payload)
       });
       
       if (response.ok) {
         const savedServerEntry: JournalEntry = await response.json();
         const updated = getCachedEntries().map(e => e.id === localEntry.id ? savedServerEntry : e);
         setCachedEntries(updated);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('wisecare:entry-updated', { detail: savedServerEntry }));
+        }
         return savedServerEntry;
       }
     } catch (error) {
       console.warn('Could not sync entry to MongoDB, persisted in local storage', error);
     }
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('wisecare:entry-updated', { detail: localEntry }));
+    }
     return localEntry;
   },
 
@@ -422,13 +451,41 @@ export const storage = {
       if (response.ok) {
         const serverDoc = await response.json();
         setCachedEntries(getCachedEntries().map(e => e.id === id ? serverDoc : e));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('wisecare:entry-updated', { detail: serverDoc }));
+        }
         return serverDoc;
       }
     } catch (error) {
       console.warn('Could not sync update to MongoDB, kept in local storage', error);
     }
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('wisecare:entry-updated', { detail: updatedEntry }));
+    }
     return updatedEntry;
+  },
+
+  delete: async (id: string): Promise<boolean> => {
+    const existing = getCachedEntries();
+    setCachedEntries(existing.filter(e => e.id !== id));
+
+    try {
+      const response = await smartFetch(`/api/entries/${id}`, {
+        method: 'DELETE',
+        headers: { ...authService.getAuthHeaders() }
+      });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wisecare:entry-updated', { detail: { id, deleted: true } }));
+      }
+      return response.ok;
+    } catch (error) {
+      console.warn('Could not sync entry deletion to MongoDB, removed locally', error);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wisecare:entry-updated', { detail: { id, deleted: true } }));
+      }
+      return true;
+    }
   }
 };
 
@@ -630,12 +687,18 @@ export const mediaStorage = {
         const savedServerItem: MediaItem = await response.json();
         const updated = getCachedMedia().map(m => m.id === localItem.id ? savedServerItem : m);
         setCachedMedia(updated);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('wisecare:media-updated', { detail: savedServerItem }));
+        }
         return savedServerItem;
       }
     } catch (error) {
       console.warn('Could not sync media to MongoDB, kept in local storage', error);
     }
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('wisecare:media-updated', { detail: localItem }));
+    }
     return localItem;
   },
 
@@ -663,12 +726,18 @@ export const mediaStorage = {
       if (response.ok) {
         const serverDoc = await response.json();
         setCachedMedia(getCachedMedia().map(m => m.id === id ? serverDoc : m));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('wisecare:media-updated', { detail: serverDoc }));
+        }
         return serverDoc;
       }
     } catch (error) {
       console.warn('Could not sync media update to MongoDB, kept in local storage', error);
     }
 
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('wisecare:media-updated', { detail: updatedItem }));
+    }
     return updatedItem;
   },
 
@@ -685,9 +754,15 @@ export const mediaStorage = {
         method: 'DELETE',
         headers: { ...authService.getAuthHeaders() }
       });
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wisecare:media-updated', { detail: { id, deleted: true } }));
+      }
       return response.ok;
     } catch (error) {
       console.warn('Could not sync media deletion to MongoDB, removed locally', error);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('wisecare:media-updated', { detail: { id, deleted: true } }));
+      }
       return true;
     }
   }

@@ -45,6 +45,26 @@ export function MediaView() {
 
   useEffect(() => {
     fetchMedia();
+
+    const handleMediaUpdated = (e: any) => {
+      const item = e.detail;
+      if (item) {
+        setMediaList(prev => {
+          if (item.deleted) {
+            return prev.filter(m => m.id !== item.id);
+          }
+          const exists = prev.some(m => m.id === item.id);
+          if (exists) {
+            return prev.map(m => m.id === item.id ? item : m);
+          }
+          return [item, ...prev];
+        });
+      }
+      mediaStorage.getAll().then(data => setMediaList(data));
+    };
+
+    window.addEventListener('wisecare:media-updated', handleMediaUpdated);
+    return () => window.removeEventListener('wisecare:media-updated', handleMediaUpdated);
   }, []);
 
   // Filtered & Searched items
@@ -460,9 +480,16 @@ export function MediaView() {
             setIsModalOpen(false);
             setMediaToEdit(null);
           }}
-          onSave={() => {
+          onSave={(savedItem) => {
             setIsModalOpen(false);
             setMediaToEdit(null);
+            if (savedItem) {
+              setMediaList(prev => {
+                const exists = prev.some(m => m.id === savedItem.id);
+                if (exists) return prev.map(m => m.id === savedItem.id ? savedItem : m);
+                return [savedItem, ...prev];
+              });
+            }
             fetchMedia();
           }}
         />

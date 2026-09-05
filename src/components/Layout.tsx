@@ -8,6 +8,7 @@ import { TasksView } from './TasksView';
 import { MediaView } from './MediaView';
 import { AddMediaModal } from './AddMediaModal';
 import { SuperadminView } from './SuperadminView';
+import { Timeline } from './Timeline';
 import { useApp } from '../context/AppContext';
 
 export function Layout() {
@@ -84,10 +85,7 @@ export function Layout() {
           {activePage === 'settings' && <Settings />}
           {activePage === 'superadmin' && user?.role === 'superadmin' && <SuperadminView />}
           {activePage === 'insights' && (
-            <div className="flex flex-col items-center justify-center h-full text-foreground/50 py-12">
-              <h3 className="text-xl font-medium mb-2">תובנות ומעקב</h3>
-              <p>העמוד בבנייה...</p>
-            </div>
+            <Timeline key={refreshKey} onAddEntry={() => setIsModalOpen(true)} />
           )}
         </div>
       </main>

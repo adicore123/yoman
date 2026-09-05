@@ -6,7 +6,7 @@ import clsx from 'clsx';
 
 interface AddMediaModalProps {
   onClose: () => void;
-  onSave: () => void;
+  onSave: (savedItem?: MediaItem) => void;
   mediaToEdit?: MediaItem | null;
   initialData?: { url?: string; title?: string } | null;
 }
@@ -43,8 +43,10 @@ export function AddMediaModal({ onClose, onSave, mediaToEdit, initialData }: Add
     // Fallback title if empty
     const finalTitle = title.trim() || (platform === 'youtube' ? 'סרטון יוטיוב' : platform === 'facebook' ? 'סרטון פייסבוק' : 'קישור מחזק');
 
+    let resultItem: MediaItem | null = null;
+
     if (isEditing && mediaToEdit) {
-      await mediaStorage.update(mediaToEdit.id, {
+      resultItem = await mediaStorage.update(mediaToEdit.id, {
         title: finalTitle,
         url: url.trim(),
         platform,
@@ -52,7 +54,7 @@ export function AddMediaModal({ onClose, onSave, mediaToEdit, initialData }: Add
         notes: notes.trim()
       });
     } else {
-      await mediaStorage.create({
+      resultItem = await mediaStorage.create({
         title: finalTitle,
         url: url.trim(),
         platform,
@@ -66,7 +68,7 @@ export function AddMediaModal({ onClose, onSave, mediaToEdit, initialData }: Add
     }
 
     setIsSaving(false);
-    onSave();
+    onSave(resultItem || undefined);
   };
 
   const getPlatformLabel = (p: MediaPlatform) => {
