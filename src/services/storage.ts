@@ -13,7 +13,8 @@ export interface JournalEntry {
   updatedAt: string;
 }
 
-const API_URL = 'http://localhost:5000/api/entries';
+const BASE_API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = `${BASE_API_URL}/api/entries`;
 const ENTRIES_CACHE_KEY = 'yoman_entries_cache';
 
 const getCachedEntries = (): JournalEntry[] => {
@@ -138,7 +139,7 @@ export interface TaskItem {
   updatedAt: string;
 }
 
-const TASKS_API_URL = 'http://localhost:5000/api/tasks';
+const TASKS_API_URL = `${BASE_API_URL}/api/tasks`;
 const TASKS_CACHE_KEY = 'yoman_tasks_cache';
 
 const getCachedTasks = (): TaskItem[] => {
@@ -284,7 +285,7 @@ export function detectMediaPlatform(url: string): MediaPlatform {
   return 'other';
 }
 
-const MEDIA_API_URL = 'http://localhost:5000/api/media';
+const MEDIA_API_URL = `${BASE_API_URL}/api/media`;
 const MEDIA_CACHE_KEY = 'yoman_media_cache';
 
 const getCachedMedia = (): MediaItem[] => {
