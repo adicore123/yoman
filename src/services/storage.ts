@@ -180,7 +180,8 @@ export const authService = {
     }
 
     if (!response.ok) {
-      throw new Error(data.error || 'שם משתמש או סיסמה שגויים');
+      const msg = data.details ? `${data.error} (${data.details})` : (data.error || 'שם משתמש או סיסמה שגויים');
+      throw new Error(msg);
     }
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));
@@ -208,7 +209,8 @@ export const authService = {
     }
 
     if (!response.ok) {
-      throw new Error(data.error || 'שגיאה בהרשמה למערכת');
+      const msg = data.details ? `${data.error} (${data.details})` : (data.error || 'שגיאה בהרשמה למערכת');
+      throw new Error(msg);
     }
     localStorage.setItem(TOKEN_KEY, data.token);
     localStorage.setItem(USER_KEY, JSON.stringify(data.user));

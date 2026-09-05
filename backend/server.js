@@ -49,22 +49,42 @@ async function seedInitialUserAndMigrate() {
 
 const DEFAULT_MONGODB_URI = "mongodb+srv://adi050levy_db_user:tv5qEqbB3Mrs1gCa@cluster0.2pttjzc.mongodb.net/yoman?retryWrites=true&w=majority";
 
-let isConnected = false;
+let cached = global.mongoose;
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
 async function connectDB() {
-  if (isConnected && mongoose.connection.readyState === 1) return;
-  const uri = process.env.MONGODB_URI || DEFAULT_MONGODB_URI;
-  try {
-    const db = await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 8000,
-      connectTimeoutMS: 8000
+  if (cached.conn && mongoose.connection.readyState === 1) {
+    return cached.conn;
+  }
+
+  if (!cached.promise) {
+    const uri = process.env.MONGODB_URI || DEFAULT_MONGODB_URI;
+    cached.promise = mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 6000,
+      socketTimeoutMS: 45000,
+      bufferCommands: false
+    }).then(async (m) => {
+      console.log('Connected to MongoDB Atlas');
+      try {
+        await seedInitialUserAndMigrate();
+      } catch (seedErr) {
+        console.warn('Seed non-blocking warning:', seedErr.message);
+      }
+      return m;
     });
-    isConnected = db.connections[0].readyState === 1;
-    console.log('Connected to MongoDB Atlas');
-    await seedInitialUserAndMigrate();
+  }
+
+  try {
+    cached.conn = await cached.promise;
   } catch (err) {
-    console.error('Error connecting to MongoDB:', err.message);
+    cached.promise = null;
+    console.error('Error connecting to MongoDB Atlas:', err.message);
     throw err;
   }
+
+  return cached.conn;
 }
 
 // Ensure database connection on each request (crucial for serverless on Vercel)
@@ -74,7 +94,7 @@ app.use(async (req, res, next) => {
     next();
   } catch (err) {
     return res.status(500).json({ 
-      error: 'שגיאת תקשורת עם מסד הנתונים', 
+      error: 'שגיאת תקשורת עם מסד הנתונים (MongoDB Atlas)', 
       details: err.message 
     });
   }
