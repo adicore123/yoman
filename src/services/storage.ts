@@ -81,32 +81,63 @@ export interface AdminUser {
   };
 }
 
-const getBaseApiUrl = (): string => {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl && envUrl.trim() !== '') {
-    // If running in production (e.g. Vercel) and envUrl is localhost, ignore it to prevent mobile errors!
-    if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      if (envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
-        return ''; // Use relative /api path on production
-      }
-    }
-    return envUrl.replace(/\/$/, '');
-  }
-
-  // If in browser on any non-localhost domain (Vercel, custom domain, etc.)
-  if (typeof window !== 'undefined') {
-    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      return ''; // Relative path (/api)
-    }
-  }
-
-  // Local development default (Vite proxy forwards /api to 5000, or direct 5000)
-  return '';
-};
-
-const BASE_API_URL = getBaseApiUrl();
 const TOKEN_KEY = 'wisecare_token';
 const USER_KEY = 'wisecare_user';
+
+// ==========================================
+// Smart Multi-Target API Client (Mobile & Vercel Resilient)
+// ==========================================
+let resolvedApiBase: string | null = null;
+
+export async function smartFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+
+  const candidates: string[] = [];
+  if (resolvedApiBase !== null) {
+    candidates.push(resolvedApiBase);
+  }
+
+  // 1. Explicit env variable if configured
+  if (import.meta.env.VITE_API_URL) {
+    const envUrl = import.meta.env.VITE_API_URL.replace(/\/$/, '');
+    if (!envUrl.includes('localhost') || (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))) {
+      candidates.push(envUrl);
+    }
+  }
+
+  // 2. Relative path (standard for Vercel serverless and Vite dev proxy)
+  candidates.push('');
+
+  // 3. Direct backend port 5000 fallback (handles mobile phones connected over local Wi-Fi, e.g. http://192.168.x.x:5000)
+  if (typeof window !== 'undefined' && window.location.hostname) {
+    candidates.push(`http://${window.location.hostname}:5000`);
+  }
+  candidates.push('http://localhost:5000');
+
+  const uniqueCandidates = [...new Set(candidates)];
+  let lastError: any = null;
+
+  for (const base of uniqueCandidates) {
+    try {
+      const url = `${base}${cleanEndpoint}`;
+      const res = await fetch(url, options);
+      const contentType = res.headers.get('content-type') || '';
+      
+      // If we got an HTML response (e.g. Vite SPA fallback on 404), try the next candidate
+      if (res.status === 404 && contentType.includes('text/html')) {
+        continue;
+      }
+
+      resolvedApiBase = base;
+      return res;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  if (lastError) throw lastError;
+  throw new Error('שגיאת תקשורת עם השרת. אנא ודא חיבור תקין לאינטרנט.');
+}
 
 // ==========================================
 // Authentication Service
@@ -130,7 +161,7 @@ export const authService = {
   login: async (username: string, password: string): Promise<{ user: UserProfile; token: string }> => {
     let response: Response;
     try {
-      response = await fetch(`${BASE_API_URL}/api/auth/login`, {
+      response = await smartFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -158,7 +189,7 @@ export const authService = {
   register: async (username: string, password: string, displayName?: string): Promise<{ user: UserProfile; token: string }> => {
     let response: Response;
     try {
-      response = await fetch(`${BASE_API_URL}/api/auth/register`, {
+      response = await smartFetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password, displayName })
@@ -191,7 +222,7 @@ export const authService = {
     const token = authService.getToken();
     if (!token) return null;
     try {
-      const response = await fetch(`${BASE_API_URL}/api/auth/me`, {
+      const response = await smartFetch('/api/auth/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.ok) {
@@ -212,7 +243,7 @@ export const authService = {
 // ==========================================
 export const adminService = {
   getStats: async (): Promise<AdminStats> => {
-    const response = await fetch(`${BASE_API_URL}/api/admin/stats`, {
+    const response = await smartFetch('/api/admin/stats', {
       headers: {
         'Content-Type': 'application/json',
         ...authService.getAuthHeaders()
@@ -226,7 +257,7 @@ export const adminService = {
   },
 
   getUsers: async (): Promise<AdminUser[]> => {
-    const response = await fetch(`${BASE_API_URL}/api/admin/users`, {
+    const response = await smartFetch('/api/admin/users', {
       headers: {
         'Content-Type': 'application/json',
         ...authService.getAuthHeaders()
@@ -240,7 +271,7 @@ export const adminService = {
   },
 
   createUser: async (user: { username: string; password: string; displayName?: string; role?: string }): Promise<AdminUser> => {
-    const response = await fetch(`${BASE_API_URL}/api/admin/users`, {
+    const response = await smartFetch('/api/admin/users', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -254,7 +285,7 @@ export const adminService = {
   },
 
   updateUser: async (id: string, updates: Partial<{ displayName: string; role: string; status: string; password?: string }>): Promise<AdminUser> => {
-    const response = await fetch(`${BASE_API_URL}/api/admin/users/${id}`, {
+    const response = await smartFetch(`/api/admin/users/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -268,7 +299,7 @@ export const adminService = {
   },
 
   deleteUser: async (id: string): Promise<boolean> => {
-    const response = await fetch(`${BASE_API_URL}/api/admin/users/${id}`, {
+    const response = await smartFetch(`/api/admin/users/${id}`, {
       method: 'DELETE',
       headers: {
         ...authService.getAuthHeaders()
@@ -310,12 +341,10 @@ const setCachedEntries = (entries: JournalEntry[]) => {
 // ==========================================
 // Journal Entries Storage
 // ==========================================
-const API_URL = `${BASE_API_URL}/api/entries`;
-
 export const storage = {
   getAll: async (): Promise<JournalEntry[]> => {
     try {
-      const response = await fetch(API_URL, {
+      const response = await smartFetch('/api/entries', {
         headers: { ...authService.getAuthHeaders() }
       });
       if (!response.ok) throw new Error('Failed to fetch entries');
@@ -344,7 +373,7 @@ export const storage = {
     setCachedEntries([localEntry, ...existing]);
 
     try {
-      const response = await fetch(API_URL, {
+      const response = await smartFetch('/api/entries', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -379,7 +408,7 @@ export const storage = {
     setCachedEntries(nextList);
 
     try {
-      const response = await fetch(`${API_URL}/${id}`, {
+      const response = await smartFetch(`/api/entries/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -404,8 +433,6 @@ export const storage = {
 // ==========================================
 // Tasks Storage
 // ==========================================
-const TASKS_API_URL = `${BASE_API_URL}/api/tasks`;
-
 const getCachedTasks = (): TaskItem[] => {
   try {
     const raw = localStorage.getItem(getCacheKey('yoman_tasks_cache'));
@@ -426,7 +453,7 @@ const setCachedTasks = (tasks: TaskItem[]) => {
 export const taskStorage = {
   getAll: async (): Promise<TaskItem[]> => {
     try {
-      const response = await fetch(TASKS_API_URL, {
+      const response = await smartFetch('/api/tasks', {
         headers: { ...authService.getAuthHeaders() }
       });
       if (!response.ok) throw new Error('Failed to fetch tasks');
@@ -452,7 +479,7 @@ export const taskStorage = {
     setCachedTasks([localTask, ...existing]);
 
     try {
-      const response = await fetch(TASKS_API_URL, {
+      const response = await smartFetch('/api/tasks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -486,7 +513,7 @@ export const taskStorage = {
     setCachedTasks(nextList);
 
     try {
-      const response = await fetch(`${TASKS_API_URL}/${id}`, {
+      const response = await smartFetch(`/api/tasks/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -518,7 +545,7 @@ export const taskStorage = {
     setCachedTasks(existing.filter(t => t.id !== id));
 
     try {
-      const response = await fetch(`${TASKS_API_URL}/${id}`, {
+      const response = await smartFetch(`/api/tasks/${id}`, {
         method: 'DELETE',
         headers: { ...authService.getAuthHeaders() }
       });
@@ -543,8 +570,6 @@ export function detectMediaPlatform(url: string): MediaPlatform {
   return 'other';
 }
 
-const MEDIA_API_URL = `${BASE_API_URL}/api/media`;
-
 const getCachedMedia = (): MediaItem[] => {
   try {
     const raw = localStorage.getItem(getCacheKey('yoman_media_cache'));
@@ -565,7 +590,7 @@ const setCachedMedia = (items: MediaItem[]) => {
 export const mediaStorage = {
   getAll: async (): Promise<MediaItem[]> => {
     try {
-      const response = await fetch(MEDIA_API_URL, {
+      const response = await smartFetch('/api/media', {
         headers: { ...authService.getAuthHeaders() }
       });
       if (!response.ok) throw new Error('Failed to fetch media');
@@ -591,7 +616,7 @@ export const mediaStorage = {
     setCachedMedia([localItem, ...existing]);
 
     try {
-      const response = await fetch(MEDIA_API_URL, {
+      const response = await smartFetch('/api/media', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -625,7 +650,7 @@ export const mediaStorage = {
     setCachedMedia(nextList);
 
     try {
-      const response = await fetch(`${MEDIA_API_URL}/${id}`, {
+      const response = await smartFetch(`/api/media/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -654,7 +679,7 @@ export const mediaStorage = {
     setCachedMedia(existing.filter(m => m.id !== id));
 
     try {
-      const response = await fetch(`${MEDIA_API_URL}/${id}`, {
+      const response = await smartFetch(`/api/media/${id}`, {
         method: 'DELETE',
         headers: { ...authService.getAuthHeaders() }
       });

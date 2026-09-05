@@ -71,8 +71,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       setIsAuthenticated(true);
       return true;
-    } catch (err) {
-      console.error('Login failed', err);
+    } catch (err: any) {
+      console.warn('Auth attempt error:', err.message || err);
       throw err;
     }
   };

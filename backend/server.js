@@ -47,29 +47,37 @@ async function seedInitialUserAndMigrate() {
   }
 }
 
+const DEFAULT_MONGODB_URI = "mongodb+srv://adi050levy_db_user:tv5qEqbB3Mrs1gCa@cluster0.2pttjzc.mongodb.net/yoman?retryWrites=true&w=majority";
+
 let isConnected = false;
 async function connectDB() {
   if (isConnected && mongoose.connection.readyState === 1) return;
-  if (!process.env.MONGODB_URI) {
-    console.error('MONGODB_URI is not set in environment variables');
-    return;
-  }
+  const uri = process.env.MONGODB_URI || DEFAULT_MONGODB_URI;
   try {
-    const db = await mongoose.connect(process.env.MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000
+    const db = await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 8000,
+      connectTimeoutMS: 8000
     });
     isConnected = db.connections[0].readyState === 1;
     console.log('Connected to MongoDB Atlas');
     await seedInitialUserAndMigrate();
   } catch (err) {
-    console.error('Error connecting to MongoDB:', err);
+    console.error('Error connecting to MongoDB:', err.message);
+    throw err;
   }
 }
 
 // Ensure database connection on each request (crucial for serverless on Vercel)
 app.use(async (req, res, next) => {
-  await connectDB();
-  next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    return res.status(500).json({ 
+      error: 'שגיאת תקשורת עם מסד הנתונים', 
+      details: err.message 
+    });
+  }
 });
 
 // ==========================================
@@ -138,6 +146,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const cleanUsername = username.trim().toLowerCase();
+    const cleanPassword = typeof password === 'string' ? password.trim() : password;
     const user = await User.findOne({ username: cleanUsername });
     if (!user) {
       return res.status(401).json({ error: 'שם משתמש או סיסמה שגויים' });
@@ -147,7 +156,11 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(403).json({ error: 'חשבון זה מושבת. פנה למנהל המערכת.' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    let isMatch = await bcrypt.compare(cleanPassword, user.password);
+    if (!isMatch && typeof password === 'string' && password !== cleanPassword) {
+      isMatch = await bcrypt.compare(password, user.password);
+    }
+
     if (!isMatch) {
       return res.status(401).json({ error: 'שם משתמש או סיסמה שגויים' });
     }
