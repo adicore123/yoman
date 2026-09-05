@@ -1,0 +1,27 @@
+{
+  "name": "Wisecare - ניהול רגשי ובריאותי",
+  "short_name": "Wisecare",
+  "description": "אפליקציה אישית לניהול רגשי, משימות טיפוליות וסרטוני מדיה מחזקים",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FDFBF7",
+  "theme_color": "#D4A373",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "share_target": {
+    "action": "/?share=true",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
